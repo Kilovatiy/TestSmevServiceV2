@@ -185,13 +185,13 @@ namespace Utils
                 }
                 else
                 {
-                    var s = input ? "Request_" : "Responce_";
+                    var s = input ? "Request_" : "Response_";
                     SaveMessage(input, doc.InnerXml.Replace("<?xml version=\"1.0\" encoding=\"utf-8\"?>", ""), s);
                 }
             }
             catch
             {
-                var s = input ? "Request_" : "Responce_";
+                var s = input ? "Request_" : "Response_";
                 SaveMessage(input, doc.InnerXml.Replace("<?xml version=\"1.0\" encoding=\"utf-8\"?>", ""), s);
             }
             
@@ -217,7 +217,7 @@ namespace Utils
             {
                 try
                 {
-                    name = input ? "Request_" : "Responce_";
+                    name = input ? "Request_" : "Response_";
                     File.WriteAllText(dir + now + name + ".xml", message);
                 }
                 catch (Exception e)

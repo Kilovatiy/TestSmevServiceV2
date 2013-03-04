@@ -15,10 +15,10 @@ namespace SmevTestService
     {
         public GetTestDataResponse GetData(GetTestData data)
         {
-            var responce = new GetTestDataResponse();
-            responce.Message = CreateMessage(data);
+            var response = new GetTestDataResponse();
+            response.Message = CreateMessage(data);
 
-            responce.MessageData = new MessageDataType
+            response.MessageData = new MessageDataType
             {
                 AppData = new AppDataType(),
                 AppDocument = new AppDocumentType
@@ -36,7 +36,7 @@ namespace SmevTestService
                 }
             };
 
-            return responce;
+            return response;
         }
 
         private MessageType CreateMessage(GetTestData request)
