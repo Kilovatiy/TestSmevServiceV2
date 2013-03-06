@@ -52,8 +52,7 @@
     <Compile Include="SmevServiceEncoder\SmevServiceMessageEncodingBindingElementExtensionElement.cs" />
     <Compile Include="SmevServiceEncoder\SmevServiceMessageEncoder.cs" />
     <Compile Include="SmevServiceEncoder\SMEVServiceMessageEncoderFactory.cs" />
-    <Compile Include="Xml\InputSignedXml.cs" />
-    <Compile Include="Xml\OutputSignedXml.cs" />
+    <Compile Include="Xml\SmevSignedXml.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Inspectors\SmevServiceInspector.cs" />
   </ItemGroup>

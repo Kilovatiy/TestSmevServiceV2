@@ -56,8 +56,10 @@ namespace Utils
             var msgContents = new byte[buffer.Count];
             Array.Copy(buffer.Array, buffer.Offset, msgContents, 0, msgContents.Length);
             var reader = XmlReader.Create(new MemoryStream(msgContents));
-            var xmlDocument = new XmlDocument();
-            xmlDocument.PreserveWhitespace = true;
+            var xmlDocument = new XmlDocument
+            {
+                PreserveWhitespace = true
+            };
             xmlDocument.Load(reader);
             
             LogMessage(xmlDocument, true);
@@ -65,15 +67,28 @@ namespace Utils
             var nodeList = xmlDocument.GetElementsByTagName(
                "Security", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd");
 
-            // Хорошо бы проверять наличие именно подписей СМЭВ и ОВ
+#if DEBUG
+            // Для тестов должна быть как минимум 1 подпись
             if (nodeList.Count < 1)
             {
                 return CreateErrorMessage(bufferManager, contentType, "SMEV-100008",
                                           "Не найдена подпись документа");
             }
+#endif
 
-            var xmlDocument2 = new XmlDocument();
-            xmlDocument2.PreserveWhitespace = false;
+#if (!DEBUG)
+            // В сообщении из СМЭВ должно быть как минимум 2 подписи
+            if (nodeList.Count < 2)
+            {
+                return CreateErrorMessage(bufferManager, contentType, "SMEV-100008",
+                                          "Не найдена подпись документа");
+            }
+#endif
+
+            var xmlDocument2 = new XmlDocument
+            {
+                PreserveWhitespace = false
+            };
             xmlDocument2.LoadXml(xmlDocument.OuterXml);
 
             // Проверяем подпись
@@ -103,9 +118,8 @@ namespace Utils
             faultElement.Attributes.Append(errorCodeAttribute);
             faultElement.Attributes.Append(errorMessageAttribute);
 
-            XmlNode bodyElement;
             var bodyElements = doc.GetElementsByTagName("Body", Soap11Namespace);
-            bodyElement = bodyElements[0];
+            var bodyElement = bodyElements[0];
             bodyElement.AppendChild(faultElement);
             return CreateMessage(doc, bufferManager, contentType);
 
@@ -161,6 +175,7 @@ namespace Utils
 
         private void LogMessage(XmlDocument doc, bool input)
         {
+            var message = doc.InnerXml.Replace("<?xml version=\"1.0\" encoding=\"utf-8\"?>", "");
             try
             {
                 var document = new XmlDocument();
@@ -176,23 +191,22 @@ namespace Utils
                         body = document.GetElementsByTagName("Body", Soap11Namespace);
                     }
                 }
+
                 if (body.Count != 0)
                 {
                     var child = body[0].FirstChild;
-                    SaveMessage(input,
-                                doc.InnerXml.Replace("<?xml version=\"1.0\" encoding=\"utf-8\"?>",
-                                                     ""), child.Name);
+                    SaveMessage(input, message, child.Name);
                 }
                 else
                 {
                     var s = input ? "Request_" : "Response_";
-                    SaveMessage(input, doc.InnerXml.Replace("<?xml version=\"1.0\" encoding=\"utf-8\"?>", ""), s);
+                    SaveMessage(input, message, s);
                 }
             }
             catch
             {
                 var s = input ? "Request_" : "Response_";
-                SaveMessage(input, doc.InnerXml.Replace("<?xml version=\"1.0\" encoding=\"utf-8\"?>", ""), s);
+                SaveMessage(input, message, s);
             }
             
         }

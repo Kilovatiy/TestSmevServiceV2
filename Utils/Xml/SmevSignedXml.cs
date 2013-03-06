@@ -6,18 +6,23 @@ using System.Xml;
 
 namespace Utils
 {
-    public class OutputSignedXml : SignedXml
+    public class SmevSignedXml : SignedXml
     {
-        public OutputSignedXml(XmlDocument document) : base(document)
+        public SmevSignedXml(XmlDocument document) : base(document)
         {
         }
 
         public override XmlElement GetIdElement(XmlDocument document, string idValue)
         {
-            if (String.Compare(idValue, KeyInfo.Id, StringComparison.OrdinalIgnoreCase) == 0)
-                return KeyInfo.GetXml();
-
-            return base.GetIdElement(document, idValue);
+            XmlNameTable myXmlNameTable = new NameTable();
+            var namespaceManager = new XmlNamespaceManager(myXmlNameTable);
+            namespaceManager.AddNamespace("wsu",
+            "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd");
+            var lst = document.SelectNodes("//*[@wsu:Id='" + idValue + "' or @wsu:ID='" + idValue +
+            "' or @wsu:ID='" + idValue + "']", namespaceManager);
+            if (lst.Count != 1)
+                return null;
+            return (XmlElement)lst.Item(0);
         }
 
         public void ComputeSignature(string prefix)

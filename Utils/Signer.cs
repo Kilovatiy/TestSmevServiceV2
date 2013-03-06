@@ -25,25 +25,30 @@ namespace Utils
                 document.InsertBefore(declaration, document.FirstChild);
             }
 
-            // Убираем Action (MustUnderstand). 
-            /*var nodeList = document.GetElementsByTagName("Action");
-            if (nodeList.Count > 0)
-            {
-                XmlNode headerNode = nodeList[0].ParentNode;
-                headerNode.RemoveChild(nodeList[0]);
-            }*/
-
-            // Ищем body и добавляем ему Id 
+            // Добавляем необходимые неймспейсы
             var ns = new XmlNamespaceManager(document.NameTable);
             ns.AddNamespace("s", "http://schemas.xmlsoap.org/soap/envelope/");
+            var envelope = document.DocumentElement.SelectSingleNode(@"//s:Envelope", ns) as XmlElement;
+            if (envelope == null)
+            {
+                throw new ApplicationException("Не найден тэг Envelope");
+            }
+            envelope.SetAttribute("xmlns:wsse", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd");
+            envelope.SetAttribute("xmlns:wsu", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd");
+            envelope.SetAttribute("xmlns:ds", "http://www.w3.org/2000/09/xmldsig#");
+
+            // Ищем body и добавляем ему wsu:Id 
             var body = document.DocumentElement.SelectSingleNode(@"//s:Body", ns) as XmlElement;
             if (body == null)
-                throw new ApplicationException("Не найден тэг body");
+                throw new ApplicationException("Не найден тэг Body");
             body.RemoveAllAttributes();
-            body.SetAttribute("wsu:Id", "body");
+            var id = document.CreateAttribute("wsu", "Id",
+                                                      "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd");
+            id.InnerText = "body";
+            body.Attributes.Append(id);
 
             // Получаем подпись
-            var mySignedXml = new OutputSignedXml(document)
+            var mySignedXml = new SmevSignedXml(document)
             {
                 SigningKey = certificate.PrivateKey
             };
@@ -89,40 +94,40 @@ namespace Utils
             namespaceManager.AddNamespace("s", "http://schemas.xmlsoap.org/soap/envelope/");
             namespaceManager.AddNamespace("wsse", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd");
             namespaceManager.AddNamespace("wsu", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd");
-            namespaceManager.AddNamespace("smev", "http://smev.gosuslugi.ru/rev111111");
+            namespaceManager.AddNamespace("smev", "http://smev.gosuslugi.ru/rev120315");
             namespaceManager.AddNamespace("ds", "http://www.w3.org/2000/09/xmldsig#");
             return namespaceManager;
         }
 
         public static bool CheckSignature(XmlDocument doc)
         {
-            bool result = true;
-
             var nodeList = doc.GetElementsByTagName(
                "Security", "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd");
 
             for (var curSignature = 0; curSignature < nodeList.Count; curSignature++)
             {
                 // Создаем объект SignedXml для проверки подписи документа.
-                var signedXml = new InputSignedXml(doc);
+                var signedXml = new SmevSignedXml(doc);
 
-                // Загружаем узел с подписью.
-                var certificate = ((XmlElement)(nodeList[curSignature])).GetElementsByTagName("BinarySecurityToken",
+                // Вытаскиваем сертификат из подписи
+                var certificateNode = ((XmlElement)(nodeList[curSignature])).GetElementsByTagName("BinarySecurityToken",
                                                                                                "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd");
-                var cert = Convert.FromBase64String(certificate[0].InnerText);
+                var rawCertData = Convert.FromBase64String(certificateNode[0].InnerText);
+                var certificate = new X509Certificate2(rawCertData);
 
-                var c = new X509Certificate2(cert);
+                var signature = ((XmlElement)nodeList[curSignature]).GetElementsByTagName("Signature", SignedXml.XmlDsigNamespaceUrl)[0];
+                signedXml.LoadXml((XmlElement)signature);
 
-                var m = ((XmlElement)nodeList[curSignature]).GetElementsByTagName("Signature", SignedXml.XmlDsigNamespaceUrl)[0];
-
-                signedXml.LoadXml((XmlElement)m);
+                
 
                 // Проверяем подпись
-                result = result && signedXml.CheckSignature(c, true);
+                var result = signedXml.CheckSignature(certificate, false);
+
+                if (!result)
+                    return false;
             }
 
-
-            return result;
+            return true;
         }
     }
 }
